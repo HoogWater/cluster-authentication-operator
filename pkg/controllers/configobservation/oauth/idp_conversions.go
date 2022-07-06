@@ -242,7 +242,7 @@ func convertProviderConfigToIDPData(
 			return nil, fmt.Errorf(missingProviderFmt, providerConfig.Type)
 		}
 
-		urls, err := discoverOpenIDURLs(cmLister, openIDConfig.Issuer, corev1.ServiceAccountRootCAKey, openIDConfig.CA)
+		urls, err := discoverOpenIDURLs(cmLister, openIDConfig.Issuer, corev1.ServiceAccountRootCAKey, openIDConfig.CA, openIDConfig.SkipUserInfo)
 		if err != nil {
 			return nil, err
 		}
@@ -313,7 +313,7 @@ func convertProviderConfigToIDPData(
 
 // discoverOpenIDURLs retrieves basic information about an OIDC server with hostname
 // given by the `issuer` argument
-func discoverOpenIDURLs(cmLister corelistersv1.ConfigMapLister, issuer, key string, ca configv1.ConfigMapNameReference) (*osinv1.OpenIDURLs, error) {
+func discoverOpenIDURLs(cmLister corelistersv1.ConfigMapLister, issuer, key string, ca configv1.ConfigMapNameReference, ignore_userinfo bool) (*osinv1.OpenIDURLs, error) {
 	issuer = strings.TrimRight(issuer, "/") // TODO make impossible via validation and remove
 
 	wellKnown := issuer + "/.well-known/openid-configuration"
@@ -363,7 +363,9 @@ func discoverOpenIDURLs(cmLister corelistersv1.ConfigMapLister, issuer, key stri
 			return nil, fmt.Errorf("invalid metadata from %s: url=%s optional=%v", wellKnown, arg.rawurl, arg.optional)
 		}
 	}
-
+	if ignore_userinfo {
+		metadata.UserInfoURL = ""
+	}
 	return &osinv1.OpenIDURLs{
 		Authorize: metadata.AuthURL,
 		Token:     metadata.TokenURL,
